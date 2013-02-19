@@ -1585,7 +1585,14 @@ public class RubyClass extends RubyModule {
         methodSignatures.put(methodName, types);
     }
 
-    public Map<Class,Map<String,Object>> getClassAnnotations() {
+  public synchronized void addConstructorSignature(Class[] types) {
+    if (constructorSignatures == null) constructorSignatures = new ArrayList<Class[]>();
+
+    constructorSignatures.add(types);
+  }
+
+
+  public Map<Class,Map<String,Object>> getClassAnnotations() {
         if (classAnnotations == null) return Collections.EMPTY_MAP;
 
         return classAnnotations;
@@ -1885,6 +1892,8 @@ public class RubyClass extends RubyModule {
     private Map<String, Map<Class, Map<String,Object>>> methodAnnotations;
 
     private Map<String, Class[]> methodSignatures;
+
+    private List<Class[]> constructorSignatures;
 
     private Map<Class, Map<String,Object>> classAnnotations;
 

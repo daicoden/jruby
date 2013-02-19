@@ -40,8 +40,14 @@ class Class
   #   java_signature '@Override void foo(int)'
   #   java_signature '@Override void foo(int foo, org.foo.Bar bar)'
   def java_signature(signature_source)
+    self_r = JRuby.reference0(self)
+
     signature = JRuby::JavaSignature.parse signature_source.to_s
-    add_method_signature signature.name, signature.types
+    if signature.signature_type == :constructor
+      add_constructor_signature signature.types
+    else
+      add_method_signature signature.name, signature.types
+    end
 
     annotations = signature.annotations
     add_method_annotation signature.name, annotations if annotations
@@ -180,6 +186,14 @@ class Class
     
     self_r.add_method_signature(name, types.to_java(JClass))
     
+    nil
+  end
+
+  def add_constructor_signature(classes)
+    self_r = JRuby.reference0(self)
+    types = classes.inject([]) {|arr, cls| arr << _anno_class(cls) }
+    self_r.add_constructor_signature(types.to_java(JClass))
+
     nil
   end
 end

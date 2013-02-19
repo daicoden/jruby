@@ -17,15 +17,28 @@ module JRuby
       return type if type
 
       # If annotation makes it in strip @ before we try and match it.
-      string = string[1..-1] if string.start_with? '@'
+      if string.is_a?(String)
+        string = string[1..-1] if string.start_with? '@'
+      end
 
-      eval "Java::#{make_class_jiable(string)}"
+      eval make_class_jiable(string)
     end
 
     ##
     # return live JI proxy for return type
     def return_type
-      as_java_type(@ast.return_type)
+      case signature_type
+        when :method then as_java_type(@ast.return_type)
+        else raise "Return type not supported for signature_type: #{signature_type}"
+      end
+    end
+
+    def signature_type
+      if @ast.is_a?(Java::OrgJrubyAstJava_signature::ConstructorSignatureNode)
+        :constructor
+      else
+        :method
+      end
     end
 
     ##
@@ -51,7 +64,11 @@ module JRuby
     ##
     # {return_type, *parameters} tuple (JI proxies)
     def types
-      [return_type, *parameters]
+      case signature_type
+        when :constructor then parameters
+        when :method then [return_type, *parameters]
+        else raise "Unknown signature_type #{signature_type}"
+      end
     end
 
     def to_s
@@ -102,21 +119,27 @@ return_type: #{return_type}
     end
 
     def make_class_jiable(string)
-      new_list = []
-      string.split(/\./).inject(false) do |last_cap, segment|
-        if segment =~ /[A-Z]/
-          if last_cap
-            new_list << "::" + segment
+      if string.is_a?(Java::OrgJrubyAstJava_signature::ReferenceTypeNode)
+        return string.getFullyTypedName()
+      elsif string.is_a?(Java::OrgJruby::RubyClass)
+        return string.class.to_s
+      else
+        new_list = []
+        string.split(/\./).inject(false) do |last_cap, segment|
+          if segment =~ /[A-Z]/
+            if last_cap
+              new_list << "::" + segment
+            else
+              new_list << "." + segment
+            end
+            last_cap = true
           else
             new_list << "." + segment
+            last_cap = false
           end
-          last_cap = true
-        else
-          new_list << "." + segment
-          last_cap = false
         end
+        "Java::#{new_list.join("")[1..-1]}"
       end
-      new_list.join("")[1..-1]
     end
   end
 end
