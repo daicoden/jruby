@@ -1335,14 +1335,46 @@ public class RubyClass extends RubyModule {
         m.voidreturn();
         m.end();
 
-        // no-arg constructor using static references to Ruby and RubyClass
-        m = new SkinnyMethodAdapter(cw, ACC_PUBLIC, "<init>", CodegenUtils.sig(void.class), null, null);
-        m.aload(0);
-        m.getstatic(javaPath, "ruby", ci(Ruby.class));
-        m.getstatic(javaPath, "rubyClass", ci(RubyClass.class));
-        m.invokespecial(p(reifiedParent), "<init>", sig(void.class, Ruby.class, RubyClass.class));
-        m.voidreturn();
-        m.end();
+        if (constructorSignatures == null) {
+          addNoArgConstructor(reifiedParent, javaPath, cw);
+        } else {
+          boolean noArgConstructorFound = false;
+
+          for (Class[] constructorSignature : constructorSignatures) {
+
+            // indices for temp values
+            Class[] params = new Class[constructorSignature.length];
+            System.arraycopy(constructorSignature, 0, params, 0, params.length);
+            int baseIndex = 1;
+            for (Class paramType : params) {
+              if (paramType == double.class || paramType == long.class) {
+                baseIndex += 2;
+              } else {
+                baseIndex += 1;
+              }
+            }
+            int rubyIndex = baseIndex;
+
+            if (params.length == 0) {
+              noArgConstructorFound = true;
+            }
+
+            String signature = sig(void.class, params);
+            m = new SkinnyMethodAdapter(cw, ACC_PUBLIC | ACC_VARARGS, "<init>", signature, null, null);
+            //TODO: ANOTATIONS
+
+            m.aload(0); // self
+            m.getstatic(javaPath, "ruby", ci(Ruby.class));
+            m.getstatic(javaPath, "rubyClass", ci(RubyClass.class));
+            m.invokespecial(p(reifiedParent), "<init>", sig(void.class, Ruby.class, RubyClass.class));
+            m.voidreturn();
+            m.end();
+          }
+
+          if (!noArgConstructorFound) {
+            addNoArgConstructor(reifiedParent, javaPath, cw);
+          }
+        }
 
         // gather a list of instance methods, so we don't accidentally make static ones that conflict
         Set<String> instanceMethods = new HashSet<String>();
@@ -1518,7 +1550,18 @@ public class RubyClass extends RubyModule {
         reifiedClass = result;
     }
 
-    public void setReifiedClass(Class newReifiedClass) {
+  private void addNoArgConstructor(Class reifiedParent, String javaPath, ClassWriter cw) {
+    SkinnyMethodAdapter m;// no-arg constructor using static references to Ruby and RubyClass
+    m = new SkinnyMethodAdapter(cw, ACC_PUBLIC, "<init>", CodegenUtils.sig(void.class), null, null);
+    m.aload(0);
+    m.getstatic(javaPath, "ruby", ci(Ruby.class));
+    m.getstatic(javaPath, "rubyClass", ci(RubyClass.class));
+    m.invokespecial(p(reifiedParent), "<init>", sig(void.class, Ruby.class, RubyClass.class));
+    m.voidreturn();
+    m.end();
+  }
+
+  public void setReifiedClass(Class newReifiedClass) {
         this.reifiedClass = newReifiedClass;
     }
 
