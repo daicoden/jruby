@@ -1356,7 +1356,11 @@ public class RubyClass extends RubyModule {
 
             FieldVisitor fieldVisitor = cw.visitField(ACC_PUBLIC, fieldName, ci(type), null, null);
 
-            for (Map.Entry<Class, Map<String, Object>> fieldAnno : fieldAnnos.entrySet()) {
+            if (fieldAnnos == null) {
+                continue;
+            }
+
+          for (Map.Entry<Class, Map<String, Object>> fieldAnno : fieldAnnos.entrySet()) {
                 Class annoType = fieldAnno.getKey();
                 System.out.println("  anno " + annoType.getName());
                 AnnotationVisitor av = fieldVisitor.visitAnnotation(ci(annoType), true);
